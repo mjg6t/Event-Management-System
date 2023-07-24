@@ -73,5 +73,3 @@ if __name__ == '__main__':
 # todo Implements DB models
 # todo project structure (multiple files)
 
-# additional comment to check if git works
-# another comment :D
