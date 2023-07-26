@@ -7,3 +7,8 @@ def get_config():
         'password': '123'
     }
     return config
+
+
+def get_db_uri():
+    return 'postgresql://postgres:123@localhost:5432/postgres'
+
