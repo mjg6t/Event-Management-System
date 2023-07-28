@@ -100,6 +100,23 @@ def get_listing():
     return success_response(None, "", status=200)
 
 
+@app.route('/add_event', method= ['POST'])
+def add_event():
+    # Get the token from the request header
+    bearer_token = request.headers.get('Authorization')
+    if not bearer_token or not bearer_token.startswith('Bearer '):
+        return failure_response("Invalid or missing Bearer token in the header!", status=400)
+
+    # Check if the user has a valid token
+    auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+    current_time = datetime.datetime.now()
+    if auth.created_at - current_time < datetime.timedelta(hours=2):
+        print("token valid!")
+    else:
+        return failure_response("Token Expired! Please login", status=400)
+    # continue...
+    
+
 def success_response(data=None, message="Success", status=200):
     response = {
         "status": "success",

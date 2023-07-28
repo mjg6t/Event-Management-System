@@ -1,6 +1,6 @@
 import random
 import string
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, func
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, func, Double
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -39,3 +39,36 @@ class Auth(Base):
         super().__init__(*args, **kwargs)
         if not self.token:
             self.token = self.generate_token()
+
+
+class Event(Base):
+    __tablename__ = 'event_detail'
+    id = Column(Integer, primary_key=True)
+    created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
+    modified_at = Column(TIMESTAMP(timezone=False), default=None)
+    status = Column(Integer, default=0)
+    event_name = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=False)
+    start_date = Column(TIMESTAMP(timezone=False), default=None)
+    end_date = Column(TIMESTAMP(timezone=False), default=None)
+    guest = Column(String(255), nullable=True)
+    audience = Column(String(255), nullable=True)
+    place_id = Column(Integer, ForeignKey('place_detail.id'))
+    place = relationship("Place", back_populates="Event")
+
+
+class Place(Base):
+    __tablename__ = 'place_detail'
+    id = Column(Integer, primary_key=True)
+    created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
+    modified_at = Column(TIMESTAMP(timezone=False), default=None)
+    status = Column(Integer, default=0)
+    place_name = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=False)
+    audience_capacity = Column(Integer)
+    air_conditioner = Column(Boolean, default=True)
+    projector = Column(Boolean, default=True)
+    sound_system = Column(Boolean, default=True)
+    latitude = Column(Double, nullable=False)
+    longitude = Column(Double, nullable=False)
+    event = relationship("Event", back_populates="Place")
