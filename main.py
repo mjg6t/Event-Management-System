@@ -1,10 +1,10 @@
 import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, User, Auth
-from flask import Flask,jsonify, request
+from models import Base, User, Auth, Event
+from flask import Flask, jsonify, request
+from werkzeug.security import generate_password_hash, check_password_hash
 import database_properties as db
-
 
 app = Flask(__name__)
 engine = create_engine(db.get_db_uri())
@@ -23,14 +23,20 @@ def save_user():
         # Get the request body
         body = request.get_json()
         # todo check email and password validity
+
+        user_exists = session.query(User).filter_by(email=body["email"]).first()
+        if user_exists is not None:
+            return failure_response("User Already Exists", 400)
+
         if body["email"] is not None and body["password"] is not None and body["name"] is not None:
             # todo encrypt password
             password = body["password"]
+            password_hash = generate_password_hash(str(password))
             # save user
             new_user = User()
             new_user.name = body["name"]
             new_user.email = body["email"]
-            new_user.password = password
+            new_user.password = password_hash
             session.add(new_user)
             session.commit()
             new_id = new_user.id
@@ -48,9 +54,13 @@ def login():
         if not body["email"] or not body["password"]:
             return failure_response("Email/Password not Valid!", status=404)
         # check user existence
-        user = session.query(User).filter_by(email=body["email"], password=body["password"]).first()
+        user = session.query(User).filter_by(email=body["email"]).first()
         if not user:
-            return failure_response("User not Found!", status=404)
+            return failure_response("no user found",400)
+        password_true = check_password_hash(str(user.password), body["password"])
+        if password_true is False:
+            return failure_response("password error!", status=404)
+
         # Update the existing Auth token
         if user.auth_token:
             user.auth_token.token = Auth.generate_token()
@@ -100,7 +110,7 @@ def get_listing():
     return success_response(None, "", status=200)
 
 
-@app.route('/add_event', method= ['POST'])
+@app.route('/add_event', methods=['POST'])
 def add_event():
     # Get the token from the request header
     bearer_token = request.headers.get('Authorization')
@@ -114,8 +124,20 @@ def add_event():
         print("token valid!")
     else:
         return failure_response("Token Expired! Please login", status=400)
-    # continue...
-    
+
+    body = request.get_json()
+    new_event = Event()
+    new_event.event_name = body["event_name"]
+    new_event.description = body["description"]
+
+    try:
+        session.add(new_event)
+        session.commit()
+        return success_response(None, "Event Added Successfully", 200)
+
+    except Exception as e:
+        return failure_response(f"{e}", 400)
+
 
 def success_response(data=None, message="Success", status=200):
     response = {
@@ -141,4 +163,3 @@ if __name__ == '__main__':
 # todo project structure (multiple files)
 
 # another commit
-
