@@ -62,7 +62,7 @@ class Place(Base):
     id = Column(Integer, primary_key=True)
     created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
     modified_at = Column(TIMESTAMP(timezone=False), default=None)
-    status: Column[int] = Column(Integer, default=0)
+    status = Column(Integer, default=0)
     place_name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=False)
     audience_capacity = Column(Integer)

@@ -1,10 +1,11 @@
-import datetime
+import datetime as dt
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, User, Auth, Event
+from models import Base, User, Auth, Event, Place
 from flask import Flask, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 import database_properties as db
+from datetime import datetime
 
 app = Flask(__name__)
 engine = create_engine(db.get_db_uri())
@@ -22,14 +23,12 @@ def save_user():
     try:
         # Get the request body
         body = request.get_json()
-        # todo check email and password validity
-
         user_exists = session.query(User).filter_by(email=body["email"]).first()
         if user_exists is not None:
             return failure_response("User Already Exists", 400)
 
         if body["email"] is not None and body["password"] is not None and body["name"] is not None:
-            # todo encrypt password
+            # strike encrypt password
             password = body["password"]
             password_hash = generate_password_hash(str(password))
             # save user
@@ -89,8 +88,8 @@ def get_listing():
 
     # Check if the user has a valid token
     auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-    current_time = datetime.datetime.now()
-    if auth.created_at - current_time < datetime.timedelta(hours=2):
+    current_time = datetime.now()
+    if auth.created_at - current_time < dt.timedelta(hours=2):
         print("token valid!")
     else:
         return failure_response("Token Expired! Please login", status=400)
@@ -112,31 +111,59 @@ def get_listing():
 
 @app.route('/add_event', methods=['POST'])
 def add_event():
-    # Get the token from the request header
-    bearer_token = request.headers.get('Authorization')
-    if not bearer_token or not bearer_token.startswith('Bearer '):
-        return failure_response("Invalid or missing Bearer token in the header!", status=400)
-
-    # Check if the user has a valid token
-    auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-    current_time = datetime.datetime.now()
-    if auth.created_at - current_time < datetime.timedelta(hours=2):
-        print("token valid!")
-    else:
-        return failure_response("Token Expired! Please login", status=400)
-
-    body = request.get_json()
-    new_event = Event()
-    new_event.event_name = body["event_name"]
-    new_event.description = body["description"]
 
     try:
-        session.add(new_event)
-        session.commit()
-        return success_response(None, "Event Added Successfully", 200)
+        # Get the token from the request header
+        bearer_token = request.headers.get('Authorization')
+        if not bearer_token or not bearer_token.startswith('Bearer '):
+            return failure_response("Invalid or missing Bearer token in the header!", status=400)
 
-    except Exception as e:
-        return failure_response(f"{e}", 400)
+        # Check if the user has a valid token
+        try:
+            auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+            current_time = datetime.now()
+            if auth.created_at - current_time < dt.timedelta(hours=2):
+                print("token valid!")
+            else:
+                return failure_response("Token Expired! Please login", status=400)
+        except Exception as eee:
+            print(eee)
+            return failure_response("Token Expired. Please Login Again!")
+
+        body = request.get_json()
+        new_event = Event()
+        new_event.event_name = body["event_name"]
+        new_event.description = body["description"]
+
+        new_event.start_date = body["start_date"]
+        new_event.end_date = body["end_date"]
+        new_event.guest = body["guest"]
+        new_event.audience_type = body["audience_type"]
+        new_event.place_id = body["place_id"]
+
+        start_date = datetime.strptime(new_event.start_date, "%Y-%m-%d %H:%M:%S")
+        end_date = datetime.strptime(new_event.end_date, "%Y-%m-%d %H:%M:%S")
+
+        # compare dates
+        event = session.query(Event).filter_by(place_id=new_event.place_id).all()
+        if event is not None:
+            for e in event:
+                # check dates
+                temp_start_date = datetime.strptime(str(e.start_date), "%Y-%m-%d %H:%M:%S")
+                temp_end_date = datetime.strptime(str(e.end_date), "%Y-%m-%d %H:%M:%S")
+                if temp_start_date <= start_date <= temp_end_date or temp_start_date <= end_date <= temp_end_date:
+                    return failure_response("Dates Already Occupied!", 400)
+
+        try:
+            session.add(new_event)
+            session.commit()
+            return success_response(None, "Event Added Successfully", 200)
+
+        except Exception as e:
+            return failure_response(f"{e}", 500)
+    except Exception as ee:
+        print(ee)
+        return failure_response(f"{ee}", 500)
 
 
 def success_response(data=None, message="Success", status=200):
