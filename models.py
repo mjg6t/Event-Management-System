@@ -35,6 +35,10 @@ class Auth(Base):
     def generate_token():
         return ''.join(random.choices(string.ascii_letters + string.digits, k=64))
 
+    @staticmethod
+    def generate_admin_token():
+        return ''+random.choice(string.ascii_letters + string.digits)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.token:

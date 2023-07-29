@@ -1,7 +1,7 @@
 import datetime as dt
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, User, Auth, Event, Place
+from models import Base, User, Auth, Event  # Place
 from flask import Flask, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 import database_properties as db
@@ -36,6 +36,7 @@ def save_user():
             new_user.name = body["name"]
             new_user.email = body["email"]
             new_user.password = password_hash
+            new_user.is_admin = body["is_admin"]
             session.add(new_user)
             session.commit()
             new_id = new_user.id
@@ -55,10 +56,24 @@ def login():
         # check user existence
         user = session.query(User).filter_by(email=body["email"]).first()
         if not user:
-            return failure_response("no user found",400)
+            return failure_response("no user found", 400)
         password_true = check_password_hash(str(user.password), body["password"])
         if password_true is False:
             return failure_response("password error!", status=404)
+        print(user.is_admin)
+        if user.is_admin is True:
+            if user.auth_token:
+                user.auth_token = Auth.generate_admin_token()  # <- this isnt working fixme
+                session.commit()
+                token = user.auth_token
+            else:
+                auth = Auth()
+                auth.user_id = user.id
+                auth.generate_admin_token()
+                session.add(auth)
+                session.commit()
+                token = auth.token
+            return success_response(data={"admin_token": token}, message="Success", status=200)
 
         # Update the existing Auth token
         if user.auth_token:
@@ -100,9 +115,9 @@ def get_listing():
         return failure_response("User not Found!", status=404)
 
     # get input parameters from endpoint
-    start_date = request.args.get('startDate')
-    end_date = request.args.get('endDate')
-    order_by = request.args.get('orderBy')
+    # start_date = request.args.get('startDate')
+    # end_date = request.args.get('endDate')
+    # order_by = request.args.get('orderBy')
 
     # todo determine what exact columns would be fetched to show in listing & what input should be there
     # todo make a model for the entity events
@@ -111,7 +126,6 @@ def get_listing():
 
 @app.route('/add_event', methods=['POST'])
 def add_event():
-
     try:
         # Get the token from the request header
         bearer_token = request.headers.get('Authorization')
@@ -164,6 +178,11 @@ def add_event():
     except Exception as ee:
         print(ee)
         return failure_response(f"{ee}", 500)
+
+
+@app.route('/admin', methods=['GET'])
+def admin_get():
+    pass
 
 
 def success_response(data=None, message="Success", status=200):
