@@ -60,16 +60,18 @@ def login():
         password_true = check_password_hash(str(user.password), body["password"])
         if password_true is False:
             return failure_response("password error!", status=404)
-        print(user.is_admin)
+
         if user.is_admin is True:
             if user.auth_token:
-                user.auth_token = Auth.generate_admin_token()  # <- this isnt working fixme
+                new_token = 'admin'+Auth.generate_token()
+                user.auth_token.token = new_token
                 session.commit()
-                token = user.auth_token
+                token = user.auth_token.token
             else:
                 auth = Auth()
                 auth.user_id = user.id
-                auth.generate_admin_token()
+                auth.generate_token()
+                auth.token = 'admin' + auth.token
                 session.add(auth)
                 session.commit()
                 token = auth.token

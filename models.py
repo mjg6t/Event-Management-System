@@ -31,13 +31,9 @@ class Auth(Base):
     # declaring one to one
     user = relationship('User', back_populates='auth_token')
 
-    @staticmethod
-    def generate_token():
+    @classmethod
+    def generate_token(cls):
         return ''.join(random.choices(string.ascii_letters + string.digits, k=64))
-
-    @staticmethod
-    def generate_admin_token():
-        return ''+random.choice(string.ascii_letters + string.digits)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
