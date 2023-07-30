@@ -1,5 +1,5 @@
 import datetime as dt
-import json
+from functools import wraps
 
 from sqlalchemy import create_engine, and_, desc, func, DATE
 from sqlalchemy.orm import sessionmaker
@@ -19,6 +19,82 @@ Base.metadata.create_all(bind=engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
+
+# ___________________________________________________________
+# Decorator Functions
+# ___________________________________________________________
+def token_check_user(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        bearer_token = request.headers.get('Authorization')
+        if not bearer_token or not bearer_token.startswith('Bearer '):
+            return failure_response("Invalid or missing Bearer token in the header!", status=400)
+
+        # Check if the user has a valid token
+        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+
+        current_time = datetime.now()
+        if auth.created_at - current_time < dt.timedelta(hours=2):
+            print("token valid: User")
+            return f()
+        else:
+            return failure_response("Token Expired! Please login", status=400)
+
+    return decorator
+
+
+def token_check_admin(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        bearer_token = request.headers.get('Authorization')
+        if not bearer_token or not bearer_token.startswith('Bearer '):
+            return failure_response("Invalid or missing Bearer token in the header!", status=400)
+
+        # Check if the user has a valid token
+        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+
+        if auth.token.startswith('admin'):
+            current_time = datetime.now()
+            if auth.created_at - current_time < dt.timedelta(hours=2):
+                print("token valid: Admin")
+                return f()
+            else:
+                return failure_response("Token Expired! Please login", status=400)
+        else:
+            return failure_response("User not allowed")
+
+    return decorator
+
+
+# _________________________________________________________________
+#  Decorator Functions
+# _________________________________________________________________
+
+# _________________________________________________________________
+# Support Functions
+# _________________________________________________________________
+
+def success_response(data=None, message="Success", status=200):
+    response = {
+        "status": "success",
+        "message": message,
+        "data": data
+    }
+    return jsonify(response), status
+
+
+def failure_response(message="Failure", status=400):
+    response = {
+        "status": "error",
+        "message": message,
+        "data": None
+    }
+    return jsonify(response), status
+
+
+# __________________________________________________________________
+# Support Functions
+# __________________________________________________________________
 
 @app.route('/signup', methods=['POST'])
 def save_user():
@@ -65,7 +141,7 @@ def login():
 
         if user.is_admin is True:
             if user.auth_token:
-                new_token = 'admin'+Auth.generate_token()
+                new_token = 'admin' + Auth.generate_token()
                 user.auth_token.token = new_token
                 session.commit()
                 token = user.auth_token.token
@@ -100,7 +176,6 @@ def login():
 
 @app.route('/event-listing', methods=['GET'])
 def get_listing():
-
     try:
         # Get the token from the request header
         bearer_token = request.headers.get('Authorization')
@@ -132,7 +207,8 @@ def get_listing():
 
         # Check if start_date and end_date parameters are present
         if start_date and end_date:
-            query = query.filter(and_(func.cast(Event.start_date, DATE) >= start_date, func.cast(Event.end_date, DATE) <= end_date))
+            query = query.filter(
+                and_(func.cast(Event.start_date, DATE) >= start_date, func.cast(Event.end_date, DATE) <= end_date))
         elif start_date:
             query = query.filter(func.cast(Event.start_date, DATE) == start_date)
         elif end_date:
@@ -154,6 +230,7 @@ def get_listing():
 
 
 @app.route('/add_event', methods=['POST'])
+@token_check_user
 def add_event():
     try:
         # Get the token from the request header
@@ -209,13 +286,45 @@ def add_event():
         return failure_response(f"{ee}", 500)
 
 
-@app.route('/admin', methods=['GET'])
-def admin_get():
-    pass
+@app.route('/admin', methods=['GET', 'POST'])
+@token_check_admin
+def admin_get_set():
+    if request.method == 'GET':
+        try:
+            tag_var = request.args.get('id')
+            if tag_var == 'all':
+                result = session.query(Event).all()
+                result_json = []
+                for row in result:
+                    result_json.append(row.to_json())
+                return success_response(result_json, "Success", 200)
+            else:
+                result = session.query(Event).filter_by(id=tag_var).first()
+                result_json = result.to_json()
+                return success_response(result_json, "Success", 200)
+        except Exception() as e:
+            return failure_response(f"{e}", 400)
+    if request.method == 'POST':
+        tag_var = request.args.get('id')
+        do = int(request.args.get('status'))
+        if tag_var == 'all':
+            result = session.query(Event).all()
+            result_json = []
+            for row in result:
+                row.status = do
+                row.modified_at = datetime.now()
+                result_json.append(row.to_json())
+            return success_response(result_json, "Success", 200)
+        else:
+            result = session.query(Event).filter_by(id=tag_var).first()
+            result.status = do
+            result.modified_at = datetime.now()
+            result_json = result.to_json()
+            return success_response(result_json, "Success", 200)
+
 
 @app.route('/get_all_places', methods=['GET'])
 def get_places():
-
     try:
         # Get the token from the request header
         bearer_token = request.headers.get('Authorization')
@@ -241,27 +350,7 @@ def get_places():
     except Exception as e:
         print(e)
         return failure_response("Some Error Occurred", 500)
-def success_response(data=None, message="Success", status=200):
-    response = {
-        "status": "success",
-        "message": message,
-        "data": data
-    }
-    return jsonify(response), status
-
-
-def failure_response(message="Failure", status=400):
-    response = {
-        "status": "error",
-        "message": message,
-        "data": None
-    }
-    return jsonify(response), status
 
 
 if __name__ == '__main__':
     app.run()
-
-# todo project structure (multiple files)
-
-# another commit
