@@ -56,6 +56,23 @@ class Event(Base):
     place_id = Column(Integer, ForeignKey('place_detail.id'))
     place = relationship("Place", back_populates="event")
 
+    def to_json(self):
+        # Convert the Event attributes to a JSON-compatible dictionary
+        event_json = {
+            'id': self.id,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'modified_at': self.modified_at.strftime('%Y-%m-%d %H:%M:%S') if self.modified_at else None,
+            'status': self.status,
+            'event_name': self.event_name,
+            'description': self.description,
+            'start_date': self.start_date.strftime('%Y-%m-%d %H:%M:%S') if self.start_date else None,
+            'end_date': self.end_date.strftime('%Y-%m-%d %H:%M:%S') if self.end_date else None,
+            'guest': self.guest,
+            'audience_type': self.audience_type,
+            'place': self.place.to_json() if self.place else None,
+        }
+        return event_json
+
 
 class Place(Base):
     __tablename__ = 'place_detail'
@@ -72,3 +89,21 @@ class Place(Base):
     latitude = Column(Double, nullable=False)
     longitude = Column(Double, nullable=False)
     event = relationship("Event", back_populates="place")
+
+    def to_json(self):
+        # Convert the Place attributes to a JSON-compatible dictionary
+        place_json = {
+            'id': self.id,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'modified_at': self.modified_at.strftime('%Y-%m-%d %H:%M:%S') if self.modified_at else None,
+            'status': self.status,
+            'place_name': self.place_name,
+            'description': self.description,
+            'audience_capacity': self.audience_capacity,
+            'air_conditioner': self.air_conditioner,
+            'projector': self.projector,
+            'sound_system': self.sound_system,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+        }
+        return place_json

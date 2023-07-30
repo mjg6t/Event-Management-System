@@ -1,5 +1,7 @@
 import datetime as dt
-from sqlalchemy import create_engine
+import json
+
+from sqlalchemy import create_engine, and_, desc, func, DATE
 from sqlalchemy.orm import sessionmaker
 from models import Base, User, Auth, Event  # Place
 from flask import Flask, jsonify, request
@@ -98,32 +100,57 @@ def login():
 
 @app.route('/event-listing', methods=['GET'])
 def get_listing():
-    # Get the token from the request header
-    bearer_token = request.headers.get('Authorization')
-    if not bearer_token or not bearer_token.startswith('Bearer '):
-        return failure_response("Invalid or missing Bearer token in the header!", status=400)
 
-    # Check if the user has a valid token
-    auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-    current_time = datetime.now()
-    if auth.created_at - current_time < dt.timedelta(hours=2):
-        print("token valid!")
-    else:
-        return failure_response("Token Expired! Please login", status=400)
+    try:
+        # Get the token from the request header
+        bearer_token = request.headers.get('Authorization')
+        if not bearer_token or not bearer_token.startswith('Bearer '):
+            return failure_response("Invalid or missing Bearer token in the header!", status=400)
 
-    # Retrieve the associated user
-    user = auth.user
-    if not user:
-        return failure_response("User not Found!", status=404)
+        # Check if the user has a valid token
+        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+        current_time = datetime.now()
+        if auth.created_at - current_time < dt.timedelta(hours=2):
+            print("token valid!")
+        else:
+            return failure_response("Token Expired! Please login", status=400)
 
-    # get input parameters from endpoint
-    # start_date = request.args.get('startDate')
-    # end_date = request.args.get('endDate')
-    # order_by = request.args.get('orderBy')
+        # Retrieve the associated user
+        user = auth.user
+        if not user:
+            return failure_response("User not Found!", status=404)
 
-    # todo determine what exact columns would be fetched to show in listing & what input should be there
-    # todo make a model for the entity events
-    return success_response(None, "", status=200)
+        # get input
+        start_date = request.args.get('startDate')
+        end_date = request.args.get('endDate')
+        order_by_column = request.args.get('orderByColumn')
+        order = request.args.get('order')
+        is_export = request.args.get('is_export')
+
+        # Base query to fetch events
+        query = session.query(Event)
+
+        # Check if start_date and end_date parameters are present
+        if start_date and end_date:
+            query = query.filter(and_(func.cast(Event.start_date, DATE) >= start_date, func.cast(Event.end_date, DATE) <= end_date))
+        elif start_date:
+            query = query.filter(func.cast(Event.start_date, DATE) == start_date)
+        elif end_date:
+            query = query.filter(func.cast(Event.end_date, DATE) == end_date)
+
+        # Check if order_by_column and order parameters are present
+        if order_by_column and order:
+            if order.lower() == 'asc':
+                query = query.order_by(getattr(Event, order_by_column))
+            elif order.lower() == 'desc':
+                query = query.order_by(desc(getattr(Event, order_by_column)))
+        results = query.all()
+        events_json = [event.to_json() for event in results]
+
+        return success_response(events_json, "done", 200)
+    except Exception as e:
+        print(e)
+        return failure_response("Some Error Occurred", 500)
 
 
 @app.route('/add_event', methods=['POST'])
