@@ -3,7 +3,7 @@ import json
 
 from sqlalchemy import create_engine, and_, desc, func, DATE
 from sqlalchemy.orm import sessionmaker
-from models import Base, User, Auth, Event  # Place
+from models import Base, User, Auth, Event, Place  # Place
 from flask import Flask, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 import database_properties as db
@@ -213,7 +213,34 @@ def add_event():
 def admin_get():
     pass
 
+@app.route('/get_all_places', methods=['GET'])
+def get_places():
 
+    try:
+        # Get the token from the request header
+        bearer_token = request.headers.get('Authorization')
+        if not bearer_token or not bearer_token.startswith('Bearer '):
+            return failure_response("Invalid or missing Bearer token in the header!", status=400)
+
+        # Check if the user has a valid token
+        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+        current_time = datetime.now()
+        if auth.created_at - current_time < dt.timedelta(hours=2):
+            print("token valid!")
+        else:
+            return failure_response("Token Expired! Please login", status=400)
+
+        # Retrieve the associated user
+        user = auth.user
+        if not user:
+            return failure_response("User not Found!", status=404)
+
+        results = session.query(Place).filter_by(status=1).all()
+        places_json = [place.to_json() for place in results]
+        return success_response(places_json, "done", 200)
+    except Exception as e:
+        print(e)
+        return failure_response("Some Error Occurred", 500)
 def success_response(data=None, message="Success", status=200):
     response = {
         "status": "success",
