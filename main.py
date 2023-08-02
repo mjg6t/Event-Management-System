@@ -1,7 +1,7 @@
 import datetime as dt
 from functools import wraps
 
-from sqlalchemy import create_engine, and_, desc, func, DATE
+from sqlalchemy import create_engine, and_, desc, func, DATE, text
 from sqlalchemy.orm import sessionmaker
 from models import Base, User, Auth, Event, Place  # Place
 from flask import Flask, jsonify, request
@@ -286,9 +286,9 @@ def add_event():
         return failure_response(f"{ee}", 500)
 
 
-@app.route('/admin', methods=['GET', 'POST'])
+@app.route('/admin/event', methods=['GET', 'POST'])
 @token_check_admin
-def admin_get_set():
+def admin_event():
     if request.method == 'GET':
         try:
             tag_var = request.args.get('id')
@@ -313,17 +313,19 @@ def admin_get_set():
             for row in result:
                 row.status = do
                 row.modified_at = datetime.now()
+                session.commit()
                 result_json.append(row.to_json())
             return success_response(result_json, "Success", 200)
         else:
             result = session.query(Event).filter_by(id=tag_var).first()
             result.status = do
             result.modified_at = datetime.now()
+            session.commit()
             result_json = result.to_json()
             return success_response(result_json, "Success", 200)
 
 
-@app.route('/get_all_places', methods=['GET'])
+@app.route('/get_places', methods=['GET'])
 def get_places():
     try:
         # Get the token from the request header
@@ -350,6 +352,59 @@ def get_places():
     except Exception as e:
         print(e)
         return failure_response("Some Error Occurred", 500)
+
+
+@app.route('/admin/place',methods=['POST','GET','PUT'])
+@token_check_admin
+def admin_place():
+    if request.method=='POST':
+        body = request.get_json()
+        new_place = Place()
+        new_place.place_name = body["place_name"]
+        new_place.description = body["description"]
+        new_place.audience_capacity = body["audience_capacity"]
+        new_place.air_conditioner = body["air_conditioner"]
+        new_place.projector = body["projector"]
+        new_place.sound_system = body["sound_system"]
+        new_place.latitude = body["latitude"]
+        new_place.longitude = body["longitude"]
+
+        try:
+            session.add(new_place)
+            check_place = session.query(Place).filter_by(place_name=new_place.place_name).first()
+            if not check_place:
+                session.commit()
+            else:
+                return failure_response("Place already Exists",400)
+            return success_response(None,"Success",200)
+        except Exception as ec:
+            return failure_response(f"{ec}",400)
+
+    if request.method == 'PUT':
+        id_var = request.args.get('id')
+        change_var = request.args.get('change')
+        value_var = request.args.get('value')
+
+        result = session.query(Place).filter_by(id=id_var).first()
+        query = text(f"UPDATE {Place.__tablename__} SET {change_var} = '{value_var}' WHERE id={id_var};")
+        session.execute(query)
+        result.modified_at = datetime.now()
+        session.commit()
+        print(result.place_name)
+        return success_response(None,"Success",200)
+
+    if request.method == 'GET':
+        id_var = request.args.get('id')
+        if id_var == 'all':
+            result = session.query(Place).all()
+            result_json = []
+            for row in result:
+                result_json.append(row.to_json())
+            return success_response(result_json,"Success",200)
+        else:
+            result = session.query(Place).filter_by(id=id_var).first()
+            result_json = result.to_json()
+            return success_response(result_json,"Success",200)
 
 
 if __name__ == '__main__':
