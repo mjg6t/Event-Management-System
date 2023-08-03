@@ -8,8 +8,10 @@ from flask import Flask, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 import database_properties as db
 from datetime import datetime
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 engine = create_engine(db.get_db_uri())
 # Bind the engine with the Base class
 Base.metadata.bind = engine
