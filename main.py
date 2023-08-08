@@ -116,7 +116,6 @@ def save_user():
             new_user.name = body["name"]
             new_user.email = body["email"]
             new_user.password = password_hash
-            new_user.is_admin = body["is_admin"]
             session.add(new_user)
             session.commit()
             new_id = new_user.id
@@ -203,10 +202,15 @@ def get_listing():
         order_by_column = request.args.get('orderByColumn')
         order = request.args.get('order')
         is_export = request.args.get('is_export')
+        status = None
+        if request.args.get('status') is not None:
+            status = int(request.args.get('status'))
 
         # Base query to fetch events
         query = session.query(Event)
 
+        if  status is not None:
+            query = query.filter(Event.status == status)
         # Check if start_date and end_date parameters are present
         if start_date and end_date:
             query = query.filter(
@@ -222,6 +226,7 @@ def get_listing():
                 query = query.order_by(getattr(Event, order_by_column))
             elif order.lower() == 'desc':
                 query = query.order_by(desc(getattr(Event, order_by_column)))
+
         results = query.all()
         events_json = [event.to_json() for event in results]
 
@@ -408,6 +413,35 @@ def admin_place():
             result_json = result.to_json()
             return success_response(result_json,"Success",200)
 
+
+@app.route('/admin/updateStatus',methods=['PUT'])
+def update_status():
+    try:
+        # Get the token from the request header
+        bearer_token = request.headers.get('Authorization')
+        if not bearer_token or not bearer_token.startswith('Bearer '):
+            return failure_response("Invalid or missing Bearer token in the header!", status=400)
+
+        # Check if the user has a valid token
+        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+        current_time = datetime.now()
+        if auth.created_at - current_time < dt.timedelta(hours=2):
+            print("token valid!")
+        else:
+            return failure_response("Token Expired! Please login", status=400)
+
+
+        event_id = request.args.get('eventId', None, int)
+        event_status = request.args.get('status', None, int)
+        if event_status is None or event_status == 'undefined':
+            return failure_response("Missing or 'undefined' status parameter", status=400)
+        event = session.query(Event).filter_by(id=int(event_id)).one()
+        event.status = event_status
+        session.commit()
+        return success_response()
+    except Exception as eee:
+        print(eee)
+        return failure_response("Something Went Wrong!!")
 
 if __name__ == '__main__':
     app.run()
