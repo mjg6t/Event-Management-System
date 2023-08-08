@@ -143,10 +143,12 @@ def login():
 
         if user.is_admin is True:
             if user.auth_token:
-                new_token = 'admin' + Auth.generate_token()
-                user.auth_token.token = new_token
-                session.commit()
-                token = user.auth_token.token
+                result = session.query(Auth).filter_by(user_id=user.id).first()
+                ## result.token = 'admin' + Auth.generate_token()
+                ## result.created_at = datetime.now()
+                ## session.commit()
+                token = result.token
+
             else:
                 auth = Auth()
                 auth.user_id = user.id
@@ -155,13 +157,16 @@ def login():
                 session.add(auth)
                 session.commit()
                 token = auth.token
-            return success_response(data={"admin_token": token}, message="Success", status=200)
+            return success_response(data=token, message="Success", status=200)
 
         # Update the existing Auth token
         if user.auth_token:
-            user.auth_token.token = Auth.generate_token()
-            session.commit()
-            token = user.auth_token.token
+            result = session.query(Auth).filter_by(user_id=user.id).first()
+            ## result.token = Auth.generate_token()
+            ## result.created_at = datetime.now()
+            ## session.commit()
+            token = result.token
+
         else:
             # If there's no token, create a new one and link it to the user
             auth = Auth()
@@ -170,10 +175,10 @@ def login():
             session.add(auth)
             session.commit()
             token = auth.token
-        return success_response({'token': token}, message="Success!", status=200)
+        return success_response(token, message="Success!", status=200)
     except Exception as e:
         print(e)
-        return failure_response("An Error Occurred", status=500)
+        return failure_response(f"{e}", status=500)
 
 
 @app.route('/event-listing', methods=['GET'])
@@ -353,13 +358,13 @@ def get_places():
         return success_response(places_json, "done", 200)
     except Exception as e:
         print(e)
-        return failure_response("Some Error Occurred", 500)
+        return failure_response(f"{e}", 500)
 
 
-@app.route('/admin/place',methods=['POST','GET','PUT'])
+@app.route('/admin/place', methods=['POST', 'GET', 'PUT'])
 @token_check_admin
 def admin_place():
-    if request.method=='POST':
+    if request.method == 'POST':
         body = request.get_json()
         new_place = Place()
         new_place.place_name = body["place_name"]
@@ -377,10 +382,10 @@ def admin_place():
             if not check_place:
                 session.commit()
             else:
-                return failure_response("Place already Exists",400)
-            return success_response(None,"Success",200)
+                return failure_response("Place already Exists", 400)
+            return success_response(None, "Success", 200)
         except Exception as ec:
-            return failure_response(f"{ec}",400)
+            return failure_response(f"{ec}", 400)
 
     if request.method == 'PUT':
         id_var = request.args.get('id')
@@ -393,7 +398,7 @@ def admin_place():
         result.modified_at = datetime.now()
         session.commit()
         print(result.place_name)
-        return success_response(None,"Success",200)
+        return success_response(None, "Success", 200)
 
     if request.method == 'GET':
         id_var = request.args.get('id')
@@ -402,11 +407,11 @@ def admin_place():
             result_json = []
             for row in result:
                 result_json.append(row.to_json())
-            return success_response(result_json,"Success",200)
+            return success_response(result_json, "Success", 200)
         else:
             result = session.query(Place).filter_by(id=id_var).first()
             result_json = result.to_json()
-            return success_response(result_json,"Success",200)
+            return success_response(result_json, "Success", 200)
 
 
 if __name__ == '__main__':
