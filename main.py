@@ -241,6 +241,49 @@ def get_listing():
         return failure_response(f"{e}", 500)
 
 
+@app.route('/public/event-listing', methods=['GET'])
+def get_listing():
+    try:
+        # get input
+        start_date = request.args.get('startDate')
+        end_date = request.args.get('endDate')
+        order_by_column = request.args.get('orderByColumn')
+        order = request.args.get('order')
+        is_export = request.args.get('is_export')
+        status = None
+        if request.args.get('status') is not None:
+            status = int(request.args.get('status'))
+
+        # Base query to fetch events
+        query = session.query(Event)
+
+        if status is not None:
+            query = query.filter(Event.status == status)
+        # Check if start_date and end_date parameters are present
+        if start_date and end_date:
+            query = query.filter(
+                and_(func.cast(Event.start_date, DATE) >= start_date, func.cast(Event.end_date, DATE) <= end_date))
+        elif start_date:
+            query = query.filter(func.cast(Event.start_date, DATE) == start_date)
+        elif end_date:
+            query = query.filter(func.cast(Event.end_date, DATE) == end_date)
+
+        # Check if order_by_column and order parameters are present
+        if order_by_column and order:
+            if order.lower() == 'asc':
+                query = query.order_by(getattr(Event, order_by_column))
+            elif order.lower() == 'desc':
+                query = query.order_by(desc(getattr(Event, order_by_column)))
+
+        results = query.all()
+        events_json = [event.to_json() for event in results]
+
+        return success_response(events_json, "done", 200)
+    except Exception as e:
+        print(e)
+        return failure_response(f"{e}", 500)
+
+
 @app.route('/add_event', methods=['POST'])
 @token_check_user
 def add_event():
