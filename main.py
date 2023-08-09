@@ -367,7 +367,7 @@ def get_places():
 
 
 @app.route('/admin/place', methods=['POST', 'GET', 'PUT'])
-@token_check_admin
+# @token_check_admin
 def admin_place():
     if request.method == 'POST':
         body = request.get_json()
@@ -380,11 +380,13 @@ def admin_place():
         new_place.sound_system = body["sound_system"]
         new_place.latitude = body["latitude"]
         new_place.longitude = body["longitude"]
+        new_place.status = 1
 
         try:
-            session.add(new_place)
+
             check_place = session.query(Place).filter_by(place_name=new_place.place_name).first()
             if not check_place:
+                session.add(new_place)
                 session.commit()
             else:
                 return failure_response("Place already Exists", 400)
