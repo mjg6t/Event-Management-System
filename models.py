@@ -1,9 +1,9 @@
 import random
 import string
+
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, func, Double
 from sqlalchemy.dialects.postgresql import TIMESTAMP
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
 
@@ -46,7 +46,7 @@ class Event(Base):
     id = Column(Integer, primary_key=True)
     created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
     modified_at = Column(TIMESTAMP(timezone=False), default=None)
-    status = Column(Integer, default=0)
+    status = Column(Integer, default=1)
     event_name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=False)
     start_date = Column(TIMESTAMP(timezone=False), nullable=False)

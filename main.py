@@ -156,7 +156,7 @@ def login():
                 session.add(auth)
                 session.commit()
                 token = auth.token
-            return success_response(data=token, message="Success", status=200)
+            return success_response({'token': token, 'id': user.id}, "Success", 200)
 
         # Update the existing Auth token
         if user.auth_token:
@@ -174,7 +174,7 @@ def login():
             session.add(auth)
             session.commit()
             token = auth.token
-        return success_response(token, message="Success!", status=200)
+        return success_response({'token': token, 'id': user.id}, "Success!", 200)
     except Exception as e:
         print(e)
         return failure_response(f"{e}", status=500)
@@ -214,7 +214,7 @@ def get_listing():
         # Base query to fetch events
         query = session.query(Event)
 
-        if  status is not None:
+        if status is not None:
             query = query.filter(Event.status == status)
         # Check if start_date and end_date parameters are present
         if start_date and end_date:
@@ -238,7 +238,7 @@ def get_listing():
         return success_response(events_json, "done", 200)
     except Exception as e:
         print(e)
-        return failure_response("Some Error Occurred", 500)
+        return failure_response(f"{e}", 500)
 
 
 @app.route('/add_event', methods=['POST'])
@@ -421,7 +421,7 @@ def admin_place():
             return success_response(result_json, "Success", 200)
 
 
-@app.route('/admin/updateStatus',methods=['PUT'])
+@app.route('/admin/updateStatus', methods=['PUT'])
 def update_status():
     try:
         # Get the token from the request header
@@ -437,7 +437,6 @@ def update_status():
         else:
             return failure_response("Token Expired! Please login", status=400)
 
-
         event_id = request.args.get('eventId', None, int)
         event_status = request.args.get('status', None, int)
         if event_status is None or event_status == 'undefined':
@@ -449,6 +448,15 @@ def update_status():
     except Exception as eee:
         print(eee)
         return failure_response("Something Went Wrong!!")
+
+
+@app.route('/user', methods=['GET'])
+def getuser():
+    query = request.args.get('id')
+    result = session.query(User).filter_by(id=query).first()
+    res_json = {'name': result.name, 'is_admin': result.is_admin}
+    return success_response(res_json, "success", 200)
+
 
 if __name__ == '__main__':
     app.run()
