@@ -242,7 +242,7 @@ def get_listing():
 
 
 @app.route('/public/event-listing', methods=['GET'])
-def get_listing():
+def get_listing_public():
     try:
         # get input
         start_date = request.args.get('startDate')
