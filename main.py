@@ -501,5 +501,21 @@ def getuser():
     return success_response(res_json, "success", 200)
 
 
+@app.route('/user/logout',methods=['GET'])
+def logout():
+    try:
+        query = request.args.get('id')
+        auth_user = session.query(Auth).filter_by(user_id=query).first()
+        if auth_user:
+            session.delete(auth_user)
+            session.commit()
+        session.close()
+        return success_response()
+    except Exception as e:
+        print(e)
+        session.rollback()
+        return failure_response()
+
+
 if __name__ == '__main__':
     app.run()
