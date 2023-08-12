@@ -299,9 +299,13 @@ def add_event():
         new_event.guest = body["guest"]
         new_event.audience_type = body["audience_type"]
         new_event.place_id = body["place_id"]
+        new_event.user_id = body["user_id"]
 
         start_date = datetime.strptime(new_event.start_date, "%Y-%m-%d %H:%M:%S")
         end_date = datetime.strptime(new_event.end_date, "%Y-%m-%d %H:%M:%S")
+
+        if start_date == end_date:
+            return failure_response("Start Date and End Date Equal", 400)
 
         # compare dates
         event = session.query(Event).filter_by(place_id=new_event.place_id).all()
@@ -477,7 +481,7 @@ def getuser():
 
 @app.route('/admin/delete', methods=['DELETE'])
 @token_check_admin
-def logout():
+def delete_event():
     try:
         query = request.args.get('id')
         event = session.query(Event).filter_by(id=query).delete()
@@ -496,21 +500,10 @@ def user_event():
     try:
         query = request.args.get('id')
         events = session.query(Event).filter_by(user_id=query)
-        returns = {}
+        returns = []
         for row in events:
-            returns.update(
-                {
-                    'name': row.event_name,
-                    'description': row.description,
-                    'start_date': row.start_date,
-                    'end_date': row.end_date,
-                    'guest': row.guest,
-                    'audience': row.audience_type,
-                    'place': row.place,
-                    'status': row.status
-                }
-            )
-        return success_response({'events': returns}, "Success")
+            returns.append(row.to_json())
+        return success_response(returns, "Success")
 
     except Exception as e:
         return failure_response(f"{e}", 400)
