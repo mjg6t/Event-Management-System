@@ -20,6 +20,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     # declaring one to one
     auth_token = relationship('Auth', back_populates='user', uselist=False)
+    events = relationship('Event',back_populates='user')
 
 
 class Auth(Base):
@@ -46,7 +47,7 @@ class Event(Base):
     id = Column(Integer, primary_key=True)
     created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
     modified_at = Column(TIMESTAMP(timezone=False), default=None)
-    status = Column(Integer, default=1)
+    status = Column(Integer, default=0)
     event_name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=False)
     start_date = Column(TIMESTAMP(timezone=False), nullable=False)
@@ -55,6 +56,8 @@ class Event(Base):
     audience_type = Column(String(255), nullable=True)
     place_id = Column(Integer, ForeignKey('place_detail.id'))
     place = relationship("Place", back_populates="event")
+    user_id = Column(Integer, ForeignKey('app_user.id'))
+    user = relationship("User",back_populates="events")
 
     def to_json(self):
         # Convert the Event attributes to a JSON-compatible dictionary
@@ -70,6 +73,7 @@ class Event(Base):
             'guest': self.guest,
             'audience_type': self.audience_type,
             'place': self.place.to_json() if self.place else None,
+            'user_id': self.user_id
         }
         return event_json
 
