@@ -471,7 +471,6 @@ def update_status():
 
 
 @app.route('/user', methods=['GET'])
-@token_check_user
 def getuser():
     query = request.args.get('id')
     result = session.query(User).filter_by(id=query).first()
