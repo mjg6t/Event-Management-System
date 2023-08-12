@@ -180,25 +180,27 @@ def login():
 
 
 @app.route('/event-listing', methods=['GET'])
+@token_check_user
 def get_listing():
     try:
+        # UPDATED WITH DECORATOR
         # Get the token from the request header
-        bearer_token = request.headers.get('Authorization')
-        if not bearer_token or not bearer_token.startswith('Bearer '):
-            return failure_response("Invalid or missing Bearer token in the header!", status=400)
-
-        # Check if the user has a valid token
-        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-        current_time = datetime.now()
-        if auth.created_at - current_time < dt.timedelta(hours=2):
-            print("token valid!")
-        else:
-            return failure_response("Token Expired! Please login", status=400)
-
-        # Retrieve the associated user
-        user = auth.user
-        if not user:
-            return failure_response("User not Found!", status=404)
+        # bearer_token = request.headers.get('Authorization')
+        # if not bearer_token or not bearer_token.startswith('Bearer '):
+        #     return failure_response("Invalid or missing Bearer token in the header!", status=400)
+        #
+        # # Check if the user has a valid token
+        # auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+        # current_time = datetime.now()
+        # if auth.created_at - current_time < dt.timedelta(hours=2):
+        #     print("token valid!")
+        # else:
+        #     return failure_response("Token Expired! Please login", status=400)
+        #
+        # # Retrieve the associated user
+        # user = auth.user
+        # if not user:
+        #     return failure_response("User not Found!", status=404)
 
         # get input
         start_date = request.args.get('startDate')
@@ -287,8 +289,6 @@ def get_listing_public():
 @token_check_user
 def add_event():
     try:
-        # Get the token from the request header
-
         body = request.get_json()
         new_event = Event()
         new_event.event_name = body["event_name"]
@@ -365,25 +365,26 @@ def admin_event():
 
 
 @app.route('/get_places', methods=['GET'])
+@token_check_user
 def get_places():
     try:
-        # Get the token from the request header
-        bearer_token = request.headers.get('Authorization')
-        if not bearer_token or not bearer_token.startswith('Bearer '):
-            return failure_response("Invalid or missing Bearer token in the header!", status=400)
-
-        # Check if the user has a valid token
-        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-        current_time = datetime.now()
-        if auth.created_at - current_time < dt.timedelta(hours=2):
-            print("token valid!")
-        else:
-            return failure_response("Token Expired! Please login", status=400)
-
-        # Retrieve the associated user
-        user = auth.user
-        if not user:
-            return failure_response("User not Found!", status=404)
+        # # Get the token from the request header
+        # bearer_token = request.headers.get('Authorization')
+        # if not bearer_token or not bearer_token.startswith('Bearer '):
+        #     return failure_response("Invalid or missing Bearer token in the header!", status=400)
+        #
+        # # Check if the user has a valid token
+        # auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
+        # current_time = datetime.now()
+        # if auth.created_at - current_time < dt.timedelta(hours=2):
+        #     print("token valid!")
+        # else:
+        #     return failure_response("Token Expired! Please login", status=400)
+        #
+        # # Retrieve the associated user
+        # user = auth.user
+        # if not user:
+        #     return failure_response("User not Found!", status=404)
 
         results = session.query(Place).filter_by(status=1).all()
         places_json = [place.to_json() for place in results]
@@ -449,21 +450,9 @@ def admin_place():
 
 
 @app.route('/admin/updateStatus', methods=['PUT'])
+@token_check_admin
 def update_status():
     try:
-        # Get the token from the request header
-        bearer_token = request.headers.get('Authorization')
-        if not bearer_token or not bearer_token.startswith('Bearer '):
-            return failure_response("Invalid or missing Bearer token in the header!", status=400)
-
-        # Check if the user has a valid token
-        auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-        current_time = datetime.now()
-        if auth.created_at - current_time < dt.timedelta(hours=2):
-            print("token valid!")
-        else:
-            return failure_response("Token Expired! Please login", status=400)
-
         event_id = request.args.get('eventId', None, int)
         event_status = request.args.get('status', None, int)
         if event_status is None or event_status == 'undefined':
@@ -478,6 +467,7 @@ def update_status():
 
 
 @app.route('/user', methods=['GET'])
+@token_check_user
 def getuser():
     query = request.args.get('id')
     result = session.query(User).filter_by(id=query).first()
@@ -486,6 +476,7 @@ def getuser():
 
 
 @app.route('/admin/delete', methods=['DELETE'])
+@token_check_admin
 def logout():
     try:
         query = request.args.get('id')
@@ -500,6 +491,7 @@ def logout():
 
 
 @app.route('/user/event', methods=['GET'])
+@token_check_user
 def user_event():
     try:
         query = request.args.get('id')
