@@ -1,7 +1,7 @@
 import datetime as dt
 from functools import wraps
 
-from sqlalchemy import create_engine, and_, desc, func, DATE, text
+from sqlalchemy import create_engine, and_, desc, func, DATE, text, exists
 from sqlalchemy.orm import sessionmaker
 from models import Base, User, Auth, Event, Place  # Place
 from flask import Flask, jsonify, request
@@ -34,13 +34,13 @@ def token_check_user(f):
 
         # Check if the user has a valid token
         auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-
-        current_time = datetime.now()
-        if auth.created_at - current_time < dt.timedelta(hours=2):
-            print("token valid: User")
-            return f()
+        if auth is not None:
+            if datetime.now() - auth.created_at < dt.timedelta(hours=2):
+                return f()
+            else:
+                return failure_response("Session Expired! Please login")
         else:
-            return failure_response("Token Expired! Please login", status=400)
+            return failure_response("non existing token provided", 400)
 
     return decorator
 
@@ -55,15 +55,16 @@ def token_check_admin(f):
         # Check if the user has a valid token
         auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
 
-        if auth.token.startswith('admin'):
-            current_time = datetime.now()
-            if auth.created_at - current_time < dt.timedelta(hours=2):
-                print("token valid: Admin")
-                return f()
+        if auth is not None:
+            if auth.token.startswith('admin'):
+                if datetime.now() - auth.created_at < dt.timedelta(hours=2):
+                    return f()
+                else:
+                    return failure_response("Session Expired! Please login")
             else:
-                return failure_response("Token Expired! Please login", status=400)
+                return failure_response("user needs to be admin", 400)
         else:
-            return failure_response("User not allowed")
+            return failure_response("non existing token provided", 400)
 
     return decorator
 
@@ -116,13 +117,14 @@ def save_user():
             new_user.name = body["name"]
             new_user.email = body["email"]
             new_user.password = password_hash
+            new_user.is_admin = body["is_admin"]
             session.add(new_user)
             session.commit()
             new_id = new_user.id
             return success_response(new_id, message="User Saved Successfully!", status=200)
     except Exception as e:
         print(e)
-        return failure_response("An Error Occurred", status=500)
+        return failure_response(f"{e}", status=500)
 
 
 @app.route('/login', methods=['POST'])
@@ -143,9 +145,7 @@ def login():
         if user.is_admin is True:
             if user.auth_token:
                 result = session.query(Auth).filter_by(user_id=user.id).first()
-                ## result.token = 'admin' + Auth.generate_token()
-                ## result.created_at = datetime.now()
-                ## session.commit()
+                result.created_at = datetime.now()
                 token = result.token
 
             else:
@@ -161,9 +161,8 @@ def login():
         # Update the existing Auth token
         if user.auth_token:
             result = session.query(Auth).filter_by(user_id=user.id).first()
-            ## result.token = Auth.generate_token()
-            ## result.created_at = datetime.now()
-            ## session.commit()
+            result.created_at = datetime.now()
+            session.commit()
             token = result.token
 
         else:
@@ -289,21 +288,6 @@ def get_listing_public():
 def add_event():
     try:
         # Get the token from the request header
-        bearer_token = request.headers.get('Authorization')
-        if not bearer_token or not bearer_token.startswith('Bearer '):
-            return failure_response("Invalid or missing Bearer token in the header!", status=400)
-
-        # Check if the user has a valid token
-        try:
-            auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
-            current_time = datetime.now()
-            if auth.created_at - current_time < dt.timedelta(hours=2):
-                print("token valid!")
-            else:
-                return failure_response("Token Expired! Please login", status=400)
-        except Exception as eee:
-            print(eee)
-            return failure_response("Token Expired. Please Login Again!")
 
         body = request.get_json()
         new_event = Event()
@@ -410,7 +394,7 @@ def get_places():
 
 
 @app.route('/admin/place', methods=['POST', 'GET', 'PUT'])
-# @token_check_admin
+@token_check_admin
 def admin_place():
     if request.method == 'POST':
         body = request.get_json()
@@ -501,20 +485,43 @@ def getuser():
     return success_response(res_json, "success", 200)
 
 
-@app.route('/user/logout',methods=['GET'])
+@app.route('/admin/delete', methods=['DELETE'])
 def logout():
     try:
         query = request.args.get('id')
-        auth_user = session.query(Auth).filter_by(user_id=query).first()
-        if auth_user:
-            session.delete(auth_user)
+        event = session.query(Event).filter_by(id=query).delete()
+        if event:
             session.commit()
-        session.close()
-        return success_response()
+            return success_response(None, "Event Deleted", 200)
     except Exception as e:
         print(e)
         session.rollback()
-        return failure_response()
+        return failure_response(f"{e}", 400)
+
+
+@app.route('/user/event', methods=['GET'])
+def user_event():
+    try:
+        query = request.args.get('id')
+        events = session.query(Event).filter_by(user_id=query)
+        returns = {}
+        for row in events:
+            returns.update(
+                {
+                    'name': row.event_name,
+                    'description': row.description,
+                    'start_date': row.start_date,
+                    'end_date': row.end_date,
+                    'guest': row.guest,
+                    'audience': row.audience_type,
+                    'place': row.place,
+                    'status': row.status
+                }
+            )
+        return success_response({'events': returns}, "Success")
+
+    except Exception as e:
+        return failure_response(f"{e}", 400)
 
 
 if __name__ == '__main__':
