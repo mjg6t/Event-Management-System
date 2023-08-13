@@ -211,12 +211,18 @@ def get_listing():
         status = None
         if request.args.get('status') is not None:
             status = int(request.args.get('status'))
+        user_id = None
+        if request.args.get('userId') is not None:
+            user_id = int(request.args.get('userId'))
 
         # Base query to fetch events
         query = session.query(Event)
 
         if status is not None:
             query = query.filter(Event.status == status)
+        if user_id is not None:
+            query = query.filter(Event.user_id == user_id)
+
         # Check if start_date and end_date parameters are present
         if start_date and end_date:
             query = query.filter(
@@ -254,12 +260,18 @@ def get_listing_public():
         status = None
         if request.args.get('status') is not None:
             status = int(request.args.get('status'))
+        user_id = None
+        if request.args.get('userId') is not None:
+            user_id = int(request.args.get('userId'))
 
         # Base query to fetch events
         query = session.query(Event)
 
         if status is not None:
             query = query.filter(Event.status == status)
+        if user_id is not None:
+            query = query.filter(Event.user_id == user_id)
+
         # Check if start_date and end_date parameters are present
         if start_date and end_date:
             query = query.filter(
@@ -275,7 +287,8 @@ def get_listing_public():
                 query = query.order_by(getattr(Event, order_by_column))
             elif order.lower() == 'desc':
                 query = query.order_by(desc(getattr(Event, order_by_column)))
-
+        else:
+            query = query.order_by(desc(getattr(Event, 'start_date')))
         results = query.all()
         events_json = [event.to_json() for event in results]
 
