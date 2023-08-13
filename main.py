@@ -56,13 +56,10 @@ def token_check_admin(f):
         auth = session.query(Auth).filter_by(token=bearer_token.replace("Bearer ", "")).first()
 
         if auth is not None:
-            if auth.token.startswith('admin'):
-                if datetime.now() - auth.created_at < dt.timedelta(hours=2):
-                    return f()
-                else:
-                    return failure_response("Session Expired! Please login")
+            if datetime.now() - auth.created_at < dt.timedelta(hours=2):
+                return f()
             else:
-                return failure_response("user needs to be admin", 400)
+                return failure_response("Session Expired! Please login")
         else:
             return failure_response("non existing token provided", 400)
 
