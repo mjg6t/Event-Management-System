@@ -317,6 +317,10 @@ def add_event():
         if start_date == end_date:
             return failure_response("Start Date and End Date Equal", 400)
 
+        if start_date and end_date < datetime.now():
+            return failure_response("event can not be in the past")
+
+
         # compare dates
         event = session.query(Event).filter_by(place_id=new_event.place_id).all()
         if event is not None:
