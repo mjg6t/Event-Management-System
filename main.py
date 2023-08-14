@@ -12,8 +12,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
-engine = create_engine('postgresql+psycopg://ftsnjcjb:NKcLNJAG158qrKcn0qfUGBV8j_cx_zKd@rosie.db.elephantsql.com'
-                       '/ftsnjcjb')
+engine = create_engine(db.get_db_uri())
 # Bind the engine with the Base class
 Base.metadata.bind = engine
 # Create the tables in the database
