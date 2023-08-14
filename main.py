@@ -6,7 +6,6 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, User, Auth, Event, Place  # Place
 from flask import Flask, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
-import database_properties as db
 from datetime import datetime
 from flask_cors import CORS
 
