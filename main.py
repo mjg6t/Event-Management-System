@@ -12,7 +12,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
-engine = create_engine(db.get_db_uri())
+engine = create_engine('sqlite:///database.db')
 # Bind the engine with the Base class
 Base.metadata.bind = engine
 # Create the tables in the database
