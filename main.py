@@ -1,6 +1,6 @@
 import datetime as dt
 from functools import wraps
-
+import db_config as db
 from sqlalchemy import create_engine, and_, desc, func, DATE, text, exists
 from sqlalchemy.orm import sessionmaker
 from models import Base, User, Auth, Event, Place  # Place
@@ -11,7 +11,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
-engine = create_engine('sqlite:///database.db')
+
+engine = create_engine(db.get_db_uri())
 # Bind the engine with the Base class
 Base.metadata.bind = engine
 # Create the tables in the database
@@ -382,7 +383,7 @@ def admin_event():
 
 
 @app.route('/get_places', methods=['GET'])
-@token_check_user
+# @token_check_user
 def get_places():
     try:
         # # Get the token from the request header
