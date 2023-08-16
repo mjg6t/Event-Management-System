@@ -1,6 +1,5 @@
 import datetime as dt
 from functools import wraps
-import db_config as db
 from sqlalchemy import create_engine, and_, desc, func, DATE, text, exists
 from sqlalchemy.orm import sessionmaker
 from models import Base, User, Auth, Event, Place  # Place
@@ -10,9 +9,10 @@ from datetime import datetime
 from flask_cors import CORS
 
 app = Flask(__name__)
+app.config.from_pyfile('settings.py')
 CORS(app)
 
-engine = create_engine(db.get_db_uri())
+engine = create_engine(app.config.get('DATABASE'))
 # Bind the engine with the Base class
 Base.metadata.bind = engine
 # Create the tables in the database
@@ -311,13 +311,13 @@ def add_event():
         new_event.place_id = body["place_id"]
         new_event.user_id = body["user_id"]
 
-        start_date = datetime.strptime(new_event.start_date, "%Y-%m-%d %H:%M:%S")
-        end_date = datetime.strptime(new_event.end_date, "%Y-%m-%d %H:%M:%S")
+        start_date = datetime.strptime(str(new_event.start_date), "%Y-%m-%d %H:%M:%S")
+        end_date = datetime.strptime(str(new_event.end_date), "%Y-%m-%d %H:%M:%S")
 
         if start_date == end_date:
             return failure_response("Start Date and End Date Equal", 400)
 
-        if start_date and end_date < datetime.now():
+        if start_date < datetime.now() or end_date < datetime.now():
             return failure_response("event can not be in the past")
 
 
@@ -477,6 +477,7 @@ def update_status():
             return failure_response("Missing or 'undefined' status parameter", status=400)
         event = session.query(Event).filter_by(id=int(event_id)).one()
         event.status = event_status
+        event.modified_at = datetime.now()
         session.commit()
         return success_response()
     except Exception as eee:

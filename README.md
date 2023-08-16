@@ -1,8 +1,9 @@
-# Event-Management-System
+# Backend for Event Portal
 
- After cloning import the required libraries.
+run 'source venv/bin/activate'
+run 'flask run'
 
- App uses an external postgresql database. Configurations can be found in a seperate file named database_properties. By using psycopg2 we can connect tou our database.
+ 
 
  
  

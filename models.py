@@ -4,6 +4,7 @@ import string
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, func, Double
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship, declarative_base
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -11,7 +12,7 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = 'app_user'
     id = Column(Integer, primary_key=True)
-    created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=False), default=datetime.now())
     modified_at = Column(TIMESTAMP(timezone=False), default=None)
     status = Column(Integer, default=1)
     name = Column(String(255), nullable=False)
@@ -20,13 +21,13 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     # declaring one to one
     auth_token = relationship('Auth', back_populates='user', uselist=False)
-    events = relationship('Event',back_populates='user')
+    events = relationship('Event', back_populates='user')
 
 
 class Auth(Base):
     __tablename__ = 'auth_token'
     id = Column(Integer, primary_key=True)
-    created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=False), default=datetime.now())
     user_id = Column(Integer, ForeignKey('app_user.id'), unique=True)
     token = Column(String(255), nullable=False)
     # declaring one to one
@@ -45,7 +46,7 @@ class Auth(Base):
 class Event(Base):
     __tablename__ = 'event_detail'
     id = Column(Integer, primary_key=True)
-    created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=False), default=datetime.now())
     modified_at = Column(TIMESTAMP(timezone=False), default=None)
     status = Column(Integer, default=0)
     event_name = Column(String(255), nullable=False)
@@ -57,7 +58,8 @@ class Event(Base):
     place_id = Column(Integer, ForeignKey('place_detail.id'))
     place = relationship("Place", back_populates="event")
     user_id = Column(Integer, ForeignKey('app_user.id'))
-    user = relationship("User",back_populates="events")
+    user = relationship("User", back_populates="events")
+
 
     def to_json(self):
         # Convert the Event attributes to a JSON-compatible dictionary
@@ -81,7 +83,7 @@ class Event(Base):
 class Place(Base):
     __tablename__ = 'place_detail'
     id = Column(Integer, primary_key=True)
-    created_at = Column(TIMESTAMP(timezone=False), server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=False), default=datetime.now())
     modified_at = Column(TIMESTAMP(timezone=False), default=None)
     status = Column(Integer, default=0)
     place_name = Column(String(255), nullable=False)
@@ -93,6 +95,7 @@ class Place(Base):
     latitude = Column(Double, nullable=False)
     longitude = Column(Double, nullable=False)
     event = relationship("Event", back_populates="place")
+
 
     def to_json(self):
         # Convert the Place attributes to a JSON-compatible dictionary
